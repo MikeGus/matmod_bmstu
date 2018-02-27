@@ -29,6 +29,10 @@ class Element:
         return str(self.coefficient) + "x^" + str(self.power)
 
 
+def f(x, y):
+    return x**2 + y**2
+
+
 def contains_power(array, value):
     for elem in array:
         if elem.power == value.power:
@@ -75,62 +79,90 @@ def find_coefficients_for_level(level):
     return array
 
 
+def runge_2_next(runge_current, x_current, h, func):
+    f_current = func(x_current, runge_current)
+    return runge_current + h / 2 * (f_current + func(x_current + h, runge_current + h * f_current))
+
+
+def runge_4_next(runge_current, x_current, h, func):
+    f1 = func(x_current, runge_current)
+    f2 = func(x_current + h / 3, runge_current + h / 3 * f1)
+    f3 = func(x_current + h / 2, runge_current + h / 2 * f2)
+    f4 = func(x_current + h, runge_current + h * f3)
+
+    return runge_current + h / 6 * (f1 + 2 * f2 + 2 * f3 + f4)
+
+
 def main():
     min_level = 3
-    max_level = 10
+    max_level = 9
 
-    min_x = 0
-    steps = 200
+    min_x = 0.0
+    max_x = 2.0
 
     h = 1e-2
+
+    steps = int((max_x - min_x) / h) + 1
 
     coefficients = []
 
     for i in range(min_level, max_level):
         coefficients.append(find_coefficients_for_level(i))
 
-    current_x = min_x
+    x_current = min_x
     x = []
 
-    explicit_current = 0
-    non_explicit_current = 0
+    # non_explicit_current = 0
 
-    linar = [[] for c in coefficients]
+    pikar = [[] for c in coefficients]
 
     explicit = []
-    non_explicit = []
+    explicit_current = 0
+    # non_explicit = []
+    runge_2 = []
+    runge_2_current = 0
+
+    runge_4 = []
+    runge_4_current = 0
 
     for i in range(steps):
-        x.append(current_x)
+        x.append(x_current)
         for i in range(len(coefficients)):
             value = 0
             for elem in coefficients[i]:
-                value += elem.coefficient * current_x**elem.power
-            linar[i].append(value)
+                value += elem.coefficient * x_current ** elem.power
+            pikar[i].append(value)
 
         explicit.append(explicit_current)
-        non_explicit.append(non_explicit_current)
+        runge_2.append(runge_2_current)
+        runge_4.append(runge_4_current)
+        # non_explicit.append(non_explicit_current)
 
-        explicit_current += h * (current_x**2 + explicit_current**2)
-        current_x += h
+        explicit_current += h * (x_current ** 2 + explicit_current ** 2)
+        runge_2_current = runge_2_next(runge_2_current, x_current, h, f)
+        runge_4_current = runge_4_next(runge_4_current, x_current, h, f)
 
-        if non_explicit_current is not None:
-            D = 1 - 4 * h * (non_explicit_current + h * current_x**2)
-            if D < 0:
-                non_explicit_current = None
-            else:
-                non_explicit_current = 1 - math.sqrt(D)
-                non_explicit_current /= 2 * h
+        x_current += h
+
+        # if non_explicit_current is not None:
+        #     D = 1 - 4 * h * (non_explicit_current + h * current_x**2)
+        #     if D < 0:
+        #         non_explicit_current = None
+        #     else:
+        #         non_explicit_current = 1 - math.sqrt(D)
+        #         non_explicit_current /= 2 * h
 
     table = prettytable.PrettyTable()
     table.add_column("x", x)
-    for i in range(len(linar)):
-        table.add_column("Линар " + str(i + min_level) + "-ое", linar[i])
+    for i in range(len(pikar)):
+        table.add_column("Пикар " + str(i + min_level) + "-ое", pikar[i])
     table.add_column("Лом. явный", explicit)
-    table.add_column("Лом. неявный", non_explicit)
-
+    table.add_column("Рунге-Кутты 2-ой", runge_2)
+    table.add_column("Рунге-Кутты 4-ой", runge_4)
+    # table.add_column("Лом. неявный", non_explicit)
     table.float_format = "6.5"
 
+    # print(explicit_current)
     print(table)
 
 
